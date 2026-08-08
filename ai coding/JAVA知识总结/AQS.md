@@ -440,3 +440,59 @@ AQS 是 JUC 同步器的底层框架：用 `state` 表示资源状态，用 FIFO
 - Oracle Java API：Java 8 `AbstractQueuedSynchronizer` 文档
   - https://docs.oracle.com/javase/jp/8/docs/api/java/util/concurrent/locks/AbstractQueuedSynchronizer.html
 
+## 16. 当前项目使用情况
+
+扫描目录：`D:\ai-work-project`。
+
+### 16.1 直接使用情况
+
+当前扫描没有发现项目中直接使用以下 AQS 显式类型：
+
+- `AbstractQueuedSynchronizer`
+- `ReentrantLock`
+- `ReentrantReadWriteLock`
+- `CountDownLatch`
+- `Semaphore`
+- `LockSupport`
+
+也就是说，当前项目业务代码里暂时没有自己基于 AQS 写同步器，也没有大量直接使用显式锁。
+
+### 16.2 间接使用情况
+
+虽然没有直接使用 AQS，但项目中大量使用了 JUC 上层组件，这些组件背后会涉及 AQS 或类似的并发基础设施：
+
+- `ThreadPoolTaskExecutor` / `ThreadPoolExecutor`
+  - 项目中大量线程池配置最终依赖 JDK 并发包的线程调度、阻塞队列和原子状态控制。
+
+- `CompletableFuture`
+  - 项目中订单、运单、报价等链路大量使用异步任务编排。
+
+- `AtomicInteger` / `AtomicLong`
+  - 项目中使用原子类做批次计数、流水号、序号生成。
+
+### 16.3 代表代码位置
+
+- `D:\ai-work-project\ka-common\ka-common\src\main\java\com\kyexpress\ka\common\util\PartitionExecutorUtil.java`
+  - 使用 `CompletableFuture`、`Executor`、`AtomicInteger` 做分片并发执行。
+  - 这是项目中最典型的 JUC 上层组合使用点。
+
+- `D:\ai-work-project\ka-common\ka-common\src\main\java\com\kyexpress\ka\common\config\BusinessCommonConfiguration.java`
+  - 配置 `ThreadPoolTaskExecutor` 作为公共分片调用线程池。
+
+- `D:\ai-work-project\ka-order\ka-order-provider\src\main\java\com\kyexpress\ka\order\provider\config\OrderConfiguration.java`
+  - 配置多个业务隔离线程池，例如康展、华羿、PDD 分单、缓存发送等。
+
+- `D:\ai-work-project\ka-solution\ka-solution-provider\src\main\java\com\kyexpress\ka\solution\provider\config\SolutionConfiguration.java`
+  - 配置电子签、回单查询、批量取消、批量更新、文件导入等线程池。
+
+### 16.4 项目里用到的知识点
+
+- 当前项目不是直接操作 AQS，而是通过线程池、异步任务、原子类使用 JUC 能力。
+- 复习 AQS 时，可以把它理解为学习 `ReentrantLock`、`Semaphore`、`CountDownLatch` 的底层准备。
+- 在当前项目里，AQS 更偏“底层原理知识”，线程池、`CompletableFuture`、`AtomicInteger` 才是直接业务落点。
+
+### 16.5 复习时结合项目记忆
+
+如果面试问“项目里哪里用到了 AQS”，更稳妥的回答是：
+
+当前业务代码没有直接继承或使用 `AbstractQueuedSynchronizer`，也没有直接使用 `ReentrantLock`、`Semaphore`、`CountDownLatch`。但项目大量使用 JUC 上层并发组件，例如线程池、`CompletableFuture`、原子类。AQS 是理解这些并发工具底层设计的重要基础，但不是当前项目中的直接业务 API。

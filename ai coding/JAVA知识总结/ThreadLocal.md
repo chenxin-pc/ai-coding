@@ -387,3 +387,71 @@ try {
   - https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/lang/ThreadLocal.java
 - Oracle Java API：`Executors` 线程池复用说明
   - https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/concurrent/Executors.html
+
+## 15. 当前项目使用情况
+
+扫描目录：`D:\ai-work-project`。
+
+### 15.1 使用分布
+
+当前项目中 `ThreadLocal` 相关使用主要分布在：
+
+- `openapi-adapter`：约 4 个 Java 文件命中
+- `ka-waybil-router`：约 2 个 Java 文件命中
+- `ka-solution`：约 2 个 Java 文件命中
+- `ka-order`：约 2 个 Java 文件命中
+- `openapi-router`、`ka-common`、`ka-operation`、`gateway-server`：少量 `ThreadLocalRandom` 或上下文使用
+
+### 15.2 代表代码位置
+
+- `D:\ai-work-project\ka-waybil-router\ka-waybill-router-provider\src\main\java\com\kyexpress\ka\waybill\router\provider\config\DynamicDataSourceHolder.java`
+  - 使用 `ThreadLocal<String>` 保存当前线程的数据源标识。
+  - `putDataSource` 设置当前线程数据源。
+  - `getDataSource` 获取当前线程数据源。
+  - `removeDataSource` 清理当前线程数据源。
+
+- `D:\ai-work-project\ka-waybil-router\ka-waybill-router-provider\src\main\java\com\kyexpress\ka\waybill\router\provider\config\DataSourceAspect.java`
+  - 在 AOP 前置通知中设置数据源。
+  - 在 AOP 后置通知中调用 `removeDataSource()` 清理。
+  - 这是 `ThreadLocal` 用完必须清理的正例。
+
+- `D:\ai-work-project\ka-order\ka-order-provider\src\main\java\com\kyexpress\ka\order\provider\service\common\order\invoker\request\CustomizedParamterInvoker.java`
+  - 使用多个 `ThreadLocal` 保存订单处理链路中的 `OrderInfoItem`、寄件客户信息、收件客户信息。
+  - 在 `finally` 中统一调用 `remove()`，避免订单线程复用导致数据串号。
+
+- `D:\ai-work-project\openapi-router\openapi-router-provider\src\main\java\com\kyexpress\openapi\router\provider\utils\MyContextUtils.java`
+  - 使用 `InheritableThreadLocal<Context>` 保存请求上下文。
+  - 用于补充或同步 `ContextUtils` 中的用户上下文。
+  - 需要注意：`InheritableThreadLocal` 在线程池中不一定能正确传递提交任务时的上下文。
+
+- `D:\ai-work-project\openapi-adapter\openapi-adapter-router-core\src\main\java\com\kyexpress\openapi\adapter\router\utils\DateUtils.java`
+  - 使用 `ThreadLocal<Map<String, SimpleDateFormat>>` 缓存每个线程自己的日期格式化器。
+  - 解决 `SimpleDateFormat` 非线程安全问题。
+
+- `D:\ai-work-project\openapi-adapter\openapi-adapter-router-core\src\main\java\com\kyexpress\openapi\adapter\router\inside\adapter\DidiAuthInvokerAdapter.java`
+  - 使用 `NamedThreadLocal<Boolean>` 保存当前线程是否已经重试过。
+  - 在 `execute` 方法 `finally` 中调用 `retryFlag.remove()`。
+  - 用来控制 401 场景下同一次调用链只重试一次。
+
+- `D:\ai-work-project\ka-solution\ka-solution-provider\src\main\java\com\kyexpress\ka\solution\provider\service\common\ecsign\impl\tencent\TencentRequestHelper.java`
+  - 使用 `TransmittableThreadLocal<Map<String, Object>>` 保存电子签请求日志上下文。
+  - 支持异步线程中的上下文传递。
+  - `logEnd()` 中会调用 `remove()` 清理上下文。
+
+### 15.3 项目里用到的知识点
+
+- 线程隔离：订单上下文、动态数据源、重试标识都绑定到当前线程。
+- `remove()` 清理：动态数据源、订单上下文、滴滴认证重试标识、腾讯电子签日志上下文都有清理动作。
+- 非线程安全对象隔离：`DateUtils` 用 `ThreadLocal` 包装 `SimpleDateFormat`。
+- 上下文传递：`MyContextUtils` 使用 `InheritableThreadLocal`，`TencentRequestHelper` 使用 `TransmittableThreadLocal`。
+- 线程池风险：项目中大量使用线程池和异步任务，所以 `ThreadLocal` 清理和跨线程上下文传递尤其重要。
+
+### 15.4 复习时结合项目记忆
+
+项目里的 `ThreadLocal` 主要不是为了“缓存变量”，而是为了解决三类实际问题：
+
+- 当前线程上下文：用户上下文、订单上下文、日志上下文。
+- 当前线程路由：动态数据源标识。
+- 当前线程工具对象：`SimpleDateFormat` 隔离。
+
+复习时要重点记住：凡是 Web 请求线程、线程池线程、异步任务线程中使用 `ThreadLocal.set()`，都必须关注 `finally remove()`。

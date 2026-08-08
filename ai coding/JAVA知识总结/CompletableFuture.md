@@ -399,3 +399,68 @@ CompletableFuture<List<Order>> future = CompletableFuture
   - https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/util/concurrent/CompletableFuture.html
 - OpenJDK 源码：`CompletableFuture` 实现
   - https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/util/concurrent/CompletableFuture.java
+
+## 14. 当前项目使用情况
+
+扫描目录：`D:\ai-work-project`。
+
+### 14.1 使用分布
+
+当前项目中 `CompletableFuture` 主要集中在：
+
+- `ka-order`：约 13 个 Java 文件命中
+- `ka-solution`：约 11 个 Java 文件命中
+- `ka-common`：公共分片异步工具
+- `ka-monitor`、`openapi-adapter`、`ka-waybil-router`、`ka-operation`：少量异步任务使用
+
+### 14.2 代表代码位置
+
+- `D:\ai-work-project\ka-common\ka-common\src\main\java\com\kyexpress\ka\common\util\PartitionExecutorUtil.java`
+  - 使用 `CompletableFuture.supplyAsync` 对分片任务并行调用。
+  - 使用 `exceptionally` 收集异步异常。
+  - 使用 `CompletableFuture.allOf(...).get(10, TimeUnit.SECONDS)` 等待全部分片完成，并设置超时。
+  - 使用 `CompletableFuture::join` 汇总每个 future 的结果。
+
+- `D:\ai-work-project\ka-order\ka-order-provider\src\main\java\com\kyexpress\ka\order\provider\util\InvokerUtil.java`
+  - 封装统一的 `async`、`get`、`allOf` 方法。
+  - 异步任务统一走 `PartitionExecutorUtil.getAsyncExecutor()`。
+  - `get` 和 `allOf` 都使用 10 秒超时，避免无限等待。
+  - 使用 `SofaTracerSupplier` 包装异步任务，说明项目关注异步链路中的 trace 上下文传递。
+
+- `D:\ai-work-project\ka-order\ka-order-provider\src\main\java\com\kyexpress\ka\order\provider\service\customeize\baili\invoker\BaiLiCustomizedParameterInvoker.java`
+  - 对多个报价详情请求使用 `supplyAsync` 并行调用 CRM。
+  - 使用 `allOf` 等待全部报价返回。
+  - 使用 `join` 提取每个异步任务结果。
+
+- `D:\ai-work-project\ka-solution\ka-solution-provider\src\main\java\com\kyexpress\ka\solution\provider\service\customized\aecainiao\AeCainiaoService.java`
+  - 使用 `runAsync` 做非核心异步回传。
+  - 使用两个 `supplyAsync` 并行获取运单号和三段码。
+  - 使用 `exceptionally` 做异常兜底日志。
+  - 使用 `thenCombine` 合并两个异步结果。
+
+- `D:\ai-work-project\ka-solution\ka-solution-provider\src\main\java\com\kyexpress\ka\solution\provider\service\customized\poizon\PoizonService.java`
+  - 使用 `supplyAsync` 并行查询分单、超区、服务方式、时效等外部数据。
+  - 使用 `applyToEither` 获取两个异步查询中先返回的结果，属于竞速查询场景。
+  - 使用 `allOf(...).get(10, TimeUnit.SECONDS)` 控制聚合等待时间。
+
+### 14.3 项目里用到的知识点
+
+- `supplyAsync`：用于并行远程调用、分片批量调用。
+- `runAsync`：用于异步通知、异步回传、异步日志类非核心动作。
+- 自定义线程池：多数业务异步任务显式传入 `Executor`，没有完全依赖默认公共池。
+- `allOf`：用于等待多个并行任务完成。
+- `join`：用于在 `allOf` 完成后提取各个 future 的结果。
+- `get(timeout, unit)`：用于接口链路超时保护。
+- `exceptionally`：用于异步异常日志和默认值兜底。
+- `thenCombine`：用于两个异步任务完成后合并结果。
+- `applyToEither`：用于多个来源谁先返回用谁。
+
+### 14.4 复习时结合项目记忆
+
+项目中的 `CompletableFuture` 不是单纯演示语法，而是服务于“订单、运单、报价、分单、三段码”等远程调用聚合场景。
+
+复习时重点看三类代码：
+
+- 公共封装：`PartitionExecutorUtil`、`InvokerUtil`
+- 并行聚合：`BaiLiCustomizedParameterInvoker`、`AeCainiaoService`、`PoizonService`
+- 线程池配合：`BusinessCommonConfiguration`、`OrderConfiguration`、`SolutionConfiguration`
