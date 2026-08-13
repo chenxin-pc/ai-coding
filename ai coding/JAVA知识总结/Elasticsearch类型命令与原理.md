@@ -1175,15 +1175,372 @@ Query/Fetch 决定分布式查询流程
 Bulk 提高吞吐但必须控制大小、并发和失败重试
 ```
 
-## 15. 参考来源
+## 15. 当前项目使用情况
 
-### 15.1 本次输入背景
+扫描目录：`D:\ai-work-project`
+
+扫描时间：`2026-08-13`
+
+### 15.1 总体分布
+
+当前项目里 ES 主要有两类使用方式：
+
+- `ka-monitor`：直接使用原生 `RestHighLevelClient`，代码里能看到 `SearchRequest`、`SearchSourceBuilder`、`BoolQueryBuilder`、`QueryBuilders`、`BulkRequest`、`UpdateByQueryRequest`、`AggregationBuilders` 等，属于最适合结合本笔记复习的项目。
+- `ka-retry`、`ka-waybill-router`、`ka-operation`：启用了公司封装的 `es-client`，通过 `@EnableESClient`、`ESClient`、`SearchBO`、`GenericQuery`、`IndexParameter`、`IndexQueryParam` 操作 ES。
+
+可以把它理解成：
+
+```text
+ka-monitor
+  -> 原生 ES Java API，用于日志写入、日志查询、聚合统计、按条件更新
+
+ka-retry / ka-waybill-router / ka-operation
+  -> 公司 es-client 封装，用于按业务字段查询、按日期索引写入/更新
+```
+
+### 15.2 原生 RestHighLevelClient 接入
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\config\ElasticsearchConfig.java`
+
+项目中通过 `RestClient.builder(...)` 创建 `RestHighLevelClient`，并配置：
+
+- ES 节点地址：`elasticsearch.clusterNodes`
+- 账号密码：`elasticsearch.username` / `elasticsearch.password`
+- 连接超时、读超时、连接申请超时
+- 最大连接数、每路由最大连接数
+- KeepAlive 策略
+
+这部分对应本笔记里的“Java 客户端接入”和“生产连接配置”。日志监控这种高频查询/写入场景，连接池和超时配置会直接影响稳定性。
+
+### 15.3 Bool 查询、Filter、Term、Terms、Range
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\LogService.java`
+
+该类是 ES 查询最典型的落地点。代码中通过 `SearchRequest`、`SearchSourceBuilder`、`BoolQueryBuilder` 和 `QueryBuilders` 构造日志查询。
+
+实际字段包括：
+
+```text
+monitorStatisticId
+requestDate
+interfaceCode
+customerCode
+platformFlag
+appKey
+traceId
+successFlag
+riskLevel
+returnCode
+returnMsg
+requestArgs
+responseArgs
+workOrderNumber
+```
+
+项目里大多数条件都放在 `boolQuery.filter(...)` 里，说明业务主要是后台日志筛选，不关心 `_score` 相关性排序。这和笔记里的结论一致：
+
+```text
+结构化业务条件
+  -> term / terms / range
+  -> bool.filter
+  -> 只判断匹配，不计算相关性
+```
+
+`RouteMonitorLogService.java` 也有类似模式，使用 `createTime` 范围查询，以及 `platformFlag`、`customerCode`、`appKey`、`interfaceCode`、`waybillNumber`、`requestIp`、`traceId` 等精确过滤字段。
+
+### 15.4 text、keyword 和精确匹配
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\MergeRecordService.java`
+
+该类能看到：
+
+```java
+QueryBuilders.termQuery("logId.keyword", mergeLogId)
+QueryBuilders.termQuery("waybillNumber.keyword", waybillNumber)
+QueryBuilders.termQuery("id.keyword", mergeLogId)
+```
+
+这正好对应笔记里的 `text + keyword` 双字段设计：
+
+```text
+字段本身
+  -> text，可用于全文检索
+
+字段.keyword
+  -> keyword，可用于精确匹配、排序、聚合
+```
+
+在项目里，`logId`、`waybillNumber`、`id` 这类字段本质是标识，不应该按自然语言分词，所以查询 `.keyword` 是合理的。
+
+### 15.5 分页、排序和多索引查询
+
+`LogService.java`、`InternalOpenService.java`、`FollowInfoService.java` 等类都使用：
+
+```java
+sourceBuilder.from((pageNum - 1) * pageSize);
+sourceBuilder.size(pageSize);
+sourceBuilder.sort(...);
+```
+
+这对应普通 `from + size` 分页。项目中的日志查询大多是后台页面查询，页数可控时问题不大；如果后续出现大页码导出或深分页，应优先考虑 `search_after`、`scroll` 或公司 `es-client` 封装的 `queryByScroll` / `searchAfter`。
+
+项目还大量存在按日期或按月索引查询，例如先根据时间范围获取实际索引，再执行 `SearchRequest(indexList)`。这和你之前遇到的多索引 alias 报错也能串起来：
+
+- `_search` 可以跨多个索引或 alias。
+- `_explain`、单文档 `get/update/delete` 这类单索引操作，要明确具体 index。
+
+### 15.6 Bulk 批量写入
+
+项目中多个位置使用 Bulk：
+
+- `D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\EsService.java`
+- `D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\listener\monitor\kafka\ExternalLogAsyncListener.java`
+- `D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\listener\monitor\rocket\StandardLogRetryRocketMQListener.java`
+- `D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\runner\EsSummaryRunner.java`
+
+典型逻辑是：
+
+```java
+BulkRequest request = new BulkRequest();
+request.add(new IndexRequest(...).source(...));
+BulkResponse bulkResponse = restHighLevelClient.bulk(request, RequestOptions.DEFAULT);
+if (bulkResponse.hasFailures()) {
+    log.warn(...);
+}
+```
+
+这对应笔记里的 Bulk 注意点：
+
+- Bulk 是减少请求次数，不是一次越大越好。
+- Bulk 返回成功后仍要检查 `hasFailures()`。
+- 出现部分失败时，要记录失败原因，必要时重试或补偿。
+- `EsService.callEsBulk(...)` 使用 `@Retryable(maxAttempts = 5, backoff = @Backoff(delay = 2000, multiplier = 2))`，对应“有限次数 + 退避重试”的生产实践。
+
+### 15.7 Update By Query 和 Refresh
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\LogService.java`
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\notify\workorder\FollowInterfaceLogService.java`
+
+项目中使用 `UpdateByQueryRequest` 按条件批量更新日志字段，能看到：
+
+```java
+updateByQuery.setSlices(2);
+updateByQuery.setConflicts("proceed");
+updateByQuery.setRefresh(true);
+updateByQuery.setQuery(boolQueryBuilder);
+updateByQuery.setScript(new Script(ScriptType.INLINE, "painless", builder.toString(), params));
+```
+
+这里对应几个知识点：
+
+- `update_by_query` 本质是先查出匹配文档，再批量更新。
+- `Painless Script` 用于修改 `_source` 字段。
+- `setConflicts("proceed")` 表示遇到版本冲突继续执行。
+- `setRefresh(true)` 会让更新后更快可搜索，但也会增加刷新成本，不适合高频滥用。
+- `setSlices(2)` 用于分片并行执行，提高批量更新效率。
+
+### 15.8 聚合 Aggregation
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\BizMonitorLogService.java`
+
+项目中使用：
+
+```java
+TermsAggregationBuilder bizGroup = AggregationBuilders.terms("bizGroup").field(groupField).size(AGGREGATION_SIZE);
+TermsAggregationBuilder appNameGroup = AggregationBuilders.terms("appNameGroup").field(FieldKeyConstant.APPNAME).size(AGGREGATION_SIZE);
+bizGroup.subAggregation(appNameGroup);
+sourceBuilder.aggregation(aggregationBuilder);
+```
+
+这对应笔记中的 `terms` 聚合和子聚合，实际用于按客户、应用、平台、风险等级等维度做监控统计。
+
+### 15.9 Wildcard 查询风险
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\InternalOpenService.java`
+
+项目中存在：
+
+```java
+QueryBuilders.wildcardQuery("interfaceCode", "*" + keyword + "*")
+QueryBuilders.wildcardQuery("interfaceName", "*" + keyword + "*")
+```
+
+这正好对应笔记里的生产注意事项：前置 `*` 的 wildcard 类似 SQL 的 `LIKE '%xxx%'`，数据量大时可能比较重。当前代码外层还有时间范围、环境、`appKey` 等 filter 条件，可以减少扫描范围；如果后续性能压力明显，应考虑改造为更适合搜索的字段设计或分词方案。
+
+### 15.10 公司 es-client 封装使用
+
+`D:\ai-work-project\ka-retry\ka-retry-provider\src\main\java\com\kyexpress\ka\retry\provider\service\KaRetryPushRecordEsService.java`
+
+`D:\ai-work-project\ka-waybil-router\ka-waybill-router-provider\src\main\java\com\kyexpress\ka\waybill\router\provider\service\es\TmsRouteDataESService.java`
+
+`D:\ai-work-project\ka-waybil-router\ka-waybill-router-provider\src\main\java\com\kyexpress\ka\waybill\router\provider\service\es\RoutePushRecordEsService.java`
+
+这些类使用公司 `ESClient`，典型对象是：
+
+```text
+SearchBO
+GenericBO
+GenericQuery
+Pagination
+IndexParameter
+IndexQueryParam
+```
+
+实际场景包括：
+
+- 根据 `bizId`、`bizCode` 查询重试推送记录。
+- 根据 `routeMd5`、`waybillNumber`、`enabledFlag` 查询路由数据。
+- 根据运单号、平台标识、节点、`routeMd5` 查询路由推送记录。
+- 根据业务日期通过 `getIndexsByParam(...)` 找到实际分区索引。
+- 使用 `insertSelective(...)`、`update(...)`、`updateSelective(...)` 写入或更新 ES 文档。
+
+这说明项目里既有原生 DSL 写法，也有公司封装写法。复习时可以这样对应：
+
+```text
+原生 ES API
+  -> 看 ka-monitor
+
+公司 es-client 封装
+  -> 看 ka-retry / ka-waybill-router / ka-operation
+```
+
+### 15.11 本项目复习重点
+
+结合当前项目，ES 这份笔记最应该重点复习：
+
+- `keyword` 与 `text` 的区别，特别是 `.keyword` 精确查询。
+- `term` / `terms` / `range` / `match` / `match_phrase` 的适用场景。
+- `bool.filter` 适合后台结构化查询，不关心 `_score`。
+- `from + size` 普通分页和深分页风险。
+- 多索引、按月索引、alias 查询和单索引操作的区别。
+- Bulk 批量写入必须检查 `hasFailures()`。
+- `update_by_query`、`Painless`、`refresh`、版本冲突处理。
+- `terms` 聚合和子聚合。
+- wildcard 前置模糊查询的性能风险。
+
+## 16. 复习与面试讲解流程图
+
+### 16.1 复习思路流程图
+
+这份笔记复习时不要从命令开始背，建议按“业务为什么用 ES -> 数据怎么建模 -> 写入怎么落盘 -> 查询怎么执行 -> 生产怎么避坑 -> 项目代码怎么对应”的顺序走。
+
+```mermaid
+flowchart TD
+    A["开始复习 ES"] --> B["先明确定位：ES 是搜索和分析引擎，不是 MySQL 替代品"]
+    B --> C["建立核心概念：Cluster / Node / Index / Document / Field / Mapping / Shard / Replica"]
+    C --> D["用 MySQL 类比：Index 类似表，Document 类似行，Mapping 类似表结构"]
+    D --> E["重点复习 Mapping：字段类型决定索引方式和查询方式"]
+
+    E --> F1["标识类字段：订单号、运单号、traceId、接口编码 -> keyword"]
+    E --> F2["描述类字段：returnMsg、remark、文章内容 -> text + analyzer"]
+    E --> F3["时间/数值/布尔：date / long / integer / double / boolean"]
+    E --> F4["对象数组需要保持内部关系：nested，而不是普通 object"]
+
+    F1 --> G["进入 Query DSL：term / terms / range / exists / match / match_phrase / bool"]
+    F2 --> G
+    F3 --> G
+    F4 --> G
+
+    G --> H1["结构化后台查询：term / terms / range 放 filter，不关心 _score"]
+    G --> H2["全文检索：match / multi_match 放 query context，关注 _score"]
+    G --> H3["组合条件：bool.must / filter / should / must_not"]
+
+    H1 --> I["复习分页和排序：from + size、sort、_source includes/excludes"]
+    H2 --> I
+    H3 --> I
+
+    I --> J["理解写入流程：Client -> 协调节点 -> routing -> Primary Shard -> Replica"]
+    J --> K["继续理解底层：Memory Buffer + Translog -> Refresh -> Segment -> Merge"]
+    K --> L["用原理解释问题：写成功马上查不到、Bulk 429、Merge 吃 IO、Update 成本高"]
+
+    L --> M["理解查询流程：Client -> 协调节点 -> Scatter 到多个 Shard -> Query Phase -> Fetch Phase -> Gather 返回"]
+    M --> N["用查询流程解释：深分页为什么慢、Shard 过多为什么不一定快、filter 为什么适合后台查询"]
+
+    N --> O["复习写入实践：Bulk 批量、hasFailures 检查、有限重试、稳定 _id、避免强制 refresh"]
+    O --> P["复习生产注意：Mapping 不乱改、不要依赖 dynamic mapping、wildcard 前置 * 谨慎、Shard 数控制"]
+
+    P --> Q["回到项目代码：ka-monitor 看原生 RestHighLevelClient"]
+    Q --> R["LogService：bool.filter + terms/range/matchPhrase，用于日志筛选"]
+    Q --> S["EsService / Listener：BulkRequest + BulkResponse.hasFailures"]
+    Q --> T["BizMonitorLogService：terms aggregation 做监控统计"]
+    Q --> U["LogService / FollowInterfaceLogService：update_by_query + Painless + refresh"]
+
+    U --> V["再看公司封装：ka-retry / ka-waybill-router 使用 ESClient + SearchBO + GenericQuery"]
+    V --> W["最终形成复习闭环：概念 -> DSL -> 原理 -> 生产坑 -> 项目代码"]
+```
+
+复习时可以按这个节奏给自己提问：
+
+```text
+1. 这个字段为什么用 keyword，而不是 text？
+2. 这个查询为什么放 filter，而不是 must？
+3. 这次写入为什么要 Bulk？
+4. Bulk 成功返回后为什么还要看 hasFailures？
+5. 写成功后马上查不到，和 refresh 有什么关系？
+6. from 很大为什么慢？
+7. 这个项目里哪个类能对应这个知识点？
+```
+
+### 16.2 面试讲解思路流程图
+
+面试讲 ES 时，建议不要一上来背命令。更顺的讲法是：先讲“为什么用”，再讲“怎么存、怎么写、怎么查”，最后讲“生产怎么用稳”。
+
+```mermaid
+flowchart TD
+    A["面试官问：你了解 ES 吗？"] --> B["先给定位：ES 基于 Lucene，适合全文检索、日志检索、多条件筛选和聚合分析"]
+    B --> C["说明不适合场景：强事务、复杂 Join、高频小字段更新、替代 MySQL 做唯一事实源"]
+
+    C --> D["讲数据模型：Index / Document / Field / Mapping / Shard / Replica"]
+    D --> E["强调 Mapping：字段类型决定倒排索引和查询能力"]
+    E --> F["举例：运单号用 keyword，备注/错误信息用 text，时间用 date，金额用 double"]
+
+    F --> G["讲查询：精确条件用 term/terms/range，全文搜索用 match/multi_match"]
+    G --> H["讲 bool：must 参与相关性，filter 只过滤，should 可做 OR 或加分，must_not 排除"]
+    H --> I["结合后台系统：订单/日志查询多用 filter，因为不关心 _score"]
+
+    I --> J["讲写入流程：请求到协调节点，根据 routing 找 Primary Shard"]
+    J --> K["Primary 写入后同步到 Replica，同时写入 Buffer 和 Translog"]
+    K --> L["Refresh 生成可搜索 Segment，所以 ES 是近实时，不是写完立刻 search 一定可见"]
+    L --> M["Segment 后台 Merge，所以大量写入会带来 IO 和 CPU 压力"]
+
+    M --> N["讲查询流程：协调节点把查询分发到多个 Shard"]
+    N --> O["每个 Shard 做 Query Phase，返回 Top N 文档 ID 和排序信息"]
+    O --> P["协调节点全局归并后进入 Fetch Phase，取 _source 返回"]
+    P --> Q["用这个解释深分页：每个 Shard 都可能取 from + size，协调节点归并成本高"]
+
+    Q --> R["讲 Bulk：减少请求次数，提高吞吐，但要控制批大小和并发"]
+    R --> S["强调 Bulk HTTP 成功不代表每条成功，要检查 hasFailures 或 item 失败"]
+    S --> T["讲生产注意：Mapping 稳定、稳定 _id、防重、指数退避、避免频繁 refresh、wildcard 谨慎、Shard 数量规划"]
+
+    T --> U["落到项目经验：ka-monitor 直接用 RestHighLevelClient"]
+    U --> V["例子1：LogService 用 bool.filter + terms/range 查询日志"]
+    U --> W["例子2：EsService / Kafka Listener 用 Bulk 写日志并检查失败"]
+    U --> X["例子3：BizMonitorLogService 用 terms aggregation 做监控统计"]
+    U --> Y["例子4：UpdateByQueryRequest + Painless 批量更新日志字段"]
+
+    Y --> Z["收尾：我理解 ES 的重点不是背 API，而是 Mapping、倒排索引、Shard/Routing、Refresh、Query/Fetch、Bulk 和生产治理"]
+```
+
+面试可以压缩成一段话：
+
+```text
+我一般从三个层面理解 ES。
+第一是数据建模，Mapping 决定字段怎么被索引，比如运单号、traceId 这种标识字段要用 keyword，错误信息、备注这种全文内容才用 text。
+第二是执行流程，写入会根据 routing 找到 Primary Shard，再复制到 Replica，并经过 translog、refresh、segment、merge；查询则是协调节点 scatter 到多个 shard，query phase 找 TopN，再 fetch source。
+第三是生产使用，后台结构化查询尽量用 bool.filter，Bulk 要控制批大小和并发并检查 hasFailures，深分页、前置 wildcard、频繁 refresh、Mapping 变更都要谨慎。
+项目里 ka-monitor 就有这些实践，比如 LogService 的 filter 查询、EsService 的 Bulk 写入、BizMonitorLogService 的 terms 聚合、LogService 的 update_by_query。
+```
+
+## 17. 参考来源
+
+### 17.1 本次输入背景
 
 - ChatGPT 对话：`ES类型和常用命令`
   - 用作本笔记的主题背景和问题清单。
   - 事实结论以 Elastic 官方文档为主。
 
-### 15.2 Elastic 官方文档
+### 17.2 Elastic 官方文档
 
 - Field data types
   - https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-types
@@ -1212,7 +1569,7 @@ Bulk 提高吞吐但必须控制大小、并发和失败重试
 - Optimistic concurrency control
   - https://www.elastic.co/docs/reference/elasticsearch/rest-apis/optimistic-concurrency-control
 
-### 15.3 JavaGuide 相关资料
+### 17.3 JavaGuide 相关资料
 
 - JavaGuide 数据库知识体系
   - https://javaguide.cn/database/

@@ -434,3 +434,44 @@ CAS 是一种基于比较并交换的无锁并发机制，适合简单状态的�
 - 理论：CAS 是原子类底层实现思想。
 - 项目：原子类主要用于批量处理中的安全递增和 Lambda 可变计数。
 - 面试：如果被问“项目里哪里用到了 CAS”，可以回答没有直接调用 `compareAndSet`，但使用了 `AtomicInteger`、`AtomicLong`，它们底层依赖 CAS 原子更新。
+## 18. 复习与面试讲解流程图
+
+### 18.1 复习思路流程图
+
+```mermaid
+flowchart TD
+    A["开始复习 CAS"] --> B["先明确定位：CAS 是 Compare And Swap，乐观并发更新机制"]
+    B --> C["理解三个值：内存值 V、期望值 A、新值 B"]
+    C --> D["判断流程：如果 V == A，则把 V 改成 B；否则更新失败"]
+    D --> E["理解自旋：失败后重新读取最新值，再次尝试 CAS"]
+    E --> F["掌握 Java 应用：AtomicInteger、AtomicLong、AtomicReference、LongAdder、AQS state 更新"]
+    F --> G["理解底层：Unsafe / VarHandle 调用 CPU 原子指令，配合 volatile 保证可见性"]
+    G --> H["区分 volatile：volatile 保证可见性和有序性，CAS 保证单次原子更新"]
+    H --> I["学习优点：无锁、轻量、低竞争下性能好"]
+    I --> J["学习缺点：ABA、自旋 CPU 消耗、只能保证单变量原子操作"]
+    J --> K["学习 ABA 解决：AtomicStampedReference 或版本号"]
+    K --> L["对比 synchronized：CAS 是乐观尝试，锁是悲观互斥；高竞争下锁可能更稳定"]
+    L --> M["理解 LongAdder：热点计数时分散到多个 Cell，降低单点 CAS 竞争"]
+    M --> N["结合项目：Atomic 类、并发计数、AQS、线程池状态、无锁缓存统计"]
+    N --> O["最终闭环：比较并交换 -> 自旋重试 -> volatile 可见 -> 原子类 -> ABA/高竞争问题 -> 适用边界"]
+```
+
+### 18.2 面试讲解思路流程图
+
+```mermaid
+flowchart TD
+    A["面试官问 CAS"] --> B["先讲定义：CAS 是比较并交换，用期望值判断内存值是否被别人改过"]
+    B --> C["讲流程：读取旧值 A，计算新值 B，提交时比较内存值是否仍是 A"]
+    C --> D["如果相等则原子更新为 B，不相等说明发生竞争，更新失败后通常自旋重试"]
+    D --> E["讲为什么是乐观锁：不先阻塞线程，而是假设冲突少，失败再重试"]
+    E --> F["讲 Java 里哪里用：AtomicInteger、AtomicReference、LongAdder、AQS、并发容器内部"]
+    F --> G["讲底层：依赖 CPU 原子指令，Java 通过 Unsafe 或 VarHandle 暴露能力"]
+    G --> H["讲 volatile 关系：原子类里的 value 通常是 volatile，保证读取最新值；CAS 保证更新原子性"]
+    H --> I["讲问题1 ABA：值从 A 变 B 又变 A，CAS 看不出来中间变化"]
+    I --> J["解决 ABA：加版本号或时间戳，如 AtomicStampedReference"]
+    J --> K["讲问题2 自旋开销：高竞争下反复失败会浪费 CPU"]
+    K --> L["讲问题3 单变量限制：多字段一致性不能只靠一个简单 CAS"]
+    L --> M["对比 synchronized：低竞争 CAS 轻量，高竞争或复杂临界区 synchronized/ReentrantLock 更合适"]
+    M --> N["讲 LongAdder：把热点计数拆散到多个 Cell，减少多个线程竞争同一个变量"]
+    N --> O["收尾：CAS 适合轻量级原子更新，核心风险是 ABA、高竞争自旋和复杂状态一致性"]
+```

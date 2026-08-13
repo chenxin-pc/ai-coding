@@ -1256,14 +1256,406 @@ explain 负责拆解每个分数来源
 
 真正调优时不要追求固定百分比，而是基于真实搜索样本、真实 analyzer、真实 explain 结果，逐步调整字段权重和业务权重。
 
-## 22. 参考来源
+## 22. 当前项目使用情况
 
-### 22.1 本次输入背景
+扫描目录：`D:\ai-work-project`
+
+扫描时间：`2026-08-13`
+
+### 22.1 结论先记
+
+当前项目里没有明显使用搜索引擎式的“多字段相关性打分调优”。扫描 Java 代码时，未发现这些典型写法：
+
+```text
+multiMatchQuery
+multi_match
+FunctionScoreQueryBuilder
+function_score
+boost(...)
+setBoost(...)
+setExplain(...)
+minimumShouldMatch(...)
+disMaxQuery
+```
+
+也就是说，项目目前更多是：
+
+```text
+后台日志 / 监控 / 业务记录查询
+  -> 精确条件过滤
+  -> 时间范围过滤
+  -> 聚合统计
+  -> 显式排序
+```
+
+不是：
+
+```text
+用户搜索关键词
+  -> 多字段 BM25 打分
+  -> boost 调权
+  -> function_score 叠加业务权重
+  -> 按 _score 排名
+```
+
+### 22.2 项目里最接近“多字段匹配”的地方
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\InternalOpenService.java`
+
+代码中对接口编码/接口名称做了 OR 查询：
+
+```java
+BoolQueryBuilder group1 = QueryBuilders.boolQuery()
+        .should(QueryBuilders.wildcardQuery("interfaceCode", "*" + query.getInterfaceCode().trim() + "*"))
+        .should(QueryBuilders.wildcardQuery("interfaceName", "*" + query.getInterfaceCode().trim() + "*"));
+outerBool.filter(group1);
+```
+
+这属于“多个字段同时参与匹配”，但不是本笔记里讲的典型多字段打分：
+
+- 使用的是 `wildcardQuery`，不是 `multi_match`。
+- 没有配置 `interfaceCode^5`、`interfaceName^2` 这种字段权重。
+- 整个 `group1` 被放进 `outerBool.filter(...)`，业务语义更像“interfaceCode 或 interfaceName 包含关键字即可”，不是“哪个字段命中更重要”。
+- 外层还有 `env`、`requestDate`、`traceId`、`appKey` 等 filter 条件，最终排序使用显式字段排序，不依赖 `_score`。
+
+所以这里适合复习：
+
+```text
+bool.should
+  -> 表达 OR 条件
+
+filter
+  -> 只过滤，不做相关性排名
+
+wildcard
+  -> 支持包含式模糊匹配，但前置 * 有性能风险
+```
+
+### 22.3 match / match_phrase 也主要用于过滤
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\LogService.java`
+
+日志查询中能看到：
+
+```java
+boolQuery.filter(QueryBuilders.matchQuery("returnMsg", returnMsg).operator(Operator.AND));
+boolQuery.filter(QueryBuilders.matchPhraseQuery("requestArgs", requestArgs));
+boolQuery.filter(QueryBuilders.matchPhraseQuery("responseArgs", responseArgs));
+```
+
+这些字段看起来具备全文检索特征：
+
+- `returnMsg`
+- `requestArgs`
+- `responseArgs`
+
+但代码把它们放到了 `filter` 里，所以当前业务并不使用它们计算 `_score`。这里要重点区分：
+
+```text
+match 放在 query/must 中
+  -> 会参与相关性打分
+
+match 放在 filter 中
+  -> 只判断是否匹配，不参与 _score
+```
+
+项目当前意图是日志筛选，而不是搜索排序。因此这类写法和“多字段打分规则”不是一回事。
+
+### 22.4 大量查询是结构化条件，不需要 Score
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\RouteMonitorLogService.java`
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\MergeRecordService.java`
+
+`D:\ai-work-project\ka-monitor\ka-monitor-provider\src\main\java\com\kyexpress\ka\monitor\provider\service\monitor\BizMonitorLogService.java`
+
+这些类更多使用：
+
+```text
+termQuery
+termsQuery
+rangeQuery
+field sort
+terms aggregation
+```
+
+例如 `MergeRecordService` 使用：
+
+```java
+QueryBuilders.termQuery("logId.keyword", mergeLogId)
+QueryBuilders.termQuery("waybillNumber.keyword", waybillNumber)
+```
+
+这类查询只关心“是不是同一个 ID / 运单号 / 编码”，不需要 `_score`。这也说明当前项目里 ES 更多承担“高性能筛选 + 聚合 + 日志检索”的角色。
+
+### 22.5 如果后续要做真正的多字段打分，可以怎么落地
+
+如果未来要把 `interfaceCode`、`interfaceName`、`returnMsg`、`requestArgs`、`responseArgs` 做成真正的相关性搜索，可以从当前代码演进为下面两种方式。
+
+第一种：`multi_match + fields^boost`
+
+```json
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "range": {
+            "requestDate": {
+              "gte": 1714492800000,
+              "lte": 1717171199000
+            }
+          }
+        }
+      ],
+      "must": [
+        {
+          "multi_match": {
+            "query": "接口超时",
+            "fields": [
+              "interfaceCode^5",
+              "interfaceName^3",
+              "returnMsg^2",
+              "requestArgs^0.5",
+              "responseArgs^0.5"
+            ],
+            "type": "best_fields"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+第二种：`bool.should + 每个字段单独 boost`
+
+```json
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "term": {
+            "env": "prod"
+          }
+        }
+      ],
+      "should": [
+        {
+          "match": {
+            "interfaceCode": {
+              "query": "createOrder",
+              "boost": 5
+            }
+          }
+        },
+        {
+          "match": {
+            "interfaceName": {
+              "query": "下单",
+              "boost": 3
+            }
+          }
+        },
+        {
+          "match": {
+            "returnMsg": {
+              "query": "超时",
+              "boost": 2
+            }
+          }
+        },
+        {
+          "match_phrase": {
+            "requestArgs": {
+              "query": "customerCode",
+              "boost": 0.5
+            }
+          }
+        }
+      ],
+      "minimum_should_match": 1
+    }
+  }
+}
+```
+
+这两种方式都要注意：
+
+- 精确标识字段优先用 `keyword` 或 `.keyword`。
+- `requestArgs`、`responseArgs`、`requestData` 这类原始报文字段内容很大、噪声多，权重通常不宜太高。
+- 如果只是排查日志，不需要相关性排序，继续放在 `filter` 更合适。
+- 如果使用 `_score` 排名，排序里不要只按时间排，否则 `_score` 的效果会被显式排序覆盖。
+
+### 22.6 当前项目复习重点
+
+结合当前代码，这份“多字段打分”笔记在项目里最有用的地方是帮你区分：
+
+- `bool.should` 可以表达 OR，也可以表达加分项，但放在 `filter` 里时主要还是过滤语义。
+- `match` 不等于一定按 `_score` 排序，关键看它处在 query context 还是 filter context。
+- 当前项目没有显式字段权重，说明没有真正做搜索相关性调优。
+- 日志查询更常见的是 `filter + sort`，商品/文章/知识库搜索才更常见 `multi_match + boost + function_score`。
+- `explain` 适合排查“为什么这个结果分数高”，但项目代码中没有长期打开 explain，这符合生产实践。
+
+一句话记：
+
+```text
+当前项目 ES 多字段查询偏过滤，不偏打分；
+如果以后要做搜索排序，再引入 multi_match、boost、function_score 和 explain 调优。
+```
+
+## 23. 复习与面试讲解流程图
+
+### 23.1 复习思路流程图
+
+多字段打分复习时，不要先背 `boost`。更顺的顺序是：先分清“是否需要分数”，再理解 `_score` 来源，最后再看多字段怎么组合。
+
+```mermaid
+flowchart TD
+    A["开始复习多字段打分"] --> B["先判断业务场景：是后台筛选，还是关键词搜索？"]
+    B --> C1["后台筛选：status、traceId、时间范围、客户编码"]
+    B --> C2["关键词搜索：商品名、文章标题、错误信息、接口名称"]
+
+    C1 --> D1["使用 bool.filter"]
+    D1 --> E1["只判断是否匹配，不计算 _score"]
+    E1 --> F1["常用 term / terms / range / exists"]
+    F1 --> G1["排序靠显式 sort，例如 requestDate desc"]
+
+    C2 --> D2["使用 query context：match / multi_match / bool.must / bool.should"]
+    D2 --> E2["查询词先经过 search_analyzer 分词"]
+    E2 --> F2["到倒排索引中找候选文档"]
+    F2 --> G2["BM25 计算 _score"]
+
+    G2 --> H1["词频 TF：词在当前字段出现情况，增长有饱和"]
+    G2 --> H2["逆文档频率 IDF：越稀有的词区分度越高"]
+    G2 --> H3["字段长度归一化：短字段命中通常更集中"]
+    G2 --> H4["boost：人为提高某字段或条件的重要性"]
+
+    H1 --> I["进入多字段查询"]
+    H2 --> I
+    H3 --> I
+    H4 --> I
+
+    I --> J1["multi_match + fields^boost：写法简洁"]
+    I --> J2["bool.should + 多个 match：控制更细"]
+    I --> J3["function_score：叠加业务权重"]
+
+    J1 --> K1["best_fields：主要看命中最好的字段，适合 title/content 这种字段"]
+    J1 --> K2["most_fields：多个字段命中可以累加优势"]
+    J1 --> K3["cross_fields：多个字段像一个整体，适合 firstName/lastName"]
+
+    J2 --> L1["每个字段单独设置 boost、operator、match_phrase"]
+    J2 --> L2["should 可以做 OR，也可以做加分项"]
+    J2 --> L3["minimum_should_match 控制至少命中几个 should"]
+
+    J3 --> M1["文本相关性 + 是否推荐"]
+    J3 --> M2["文本相关性 + 时间衰减"]
+    J3 --> M3["文本相关性 + 业务等级/热度/销量"]
+
+    K1 --> N["用 explain 验证分数来源"]
+    K2 --> N
+    K3 --> N
+    L1 --> N
+    L2 --> N
+    L3 --> N
+    M1 --> N
+    M2 --> N
+    M3 --> N
+
+    N --> O["检查 analyzer：写入分词和查询分词是否符合预期"]
+    O --> P["检查排序：如果按 createTime 排，_score 可能不会主导最终顺序"]
+    P --> Q["回到项目：当前 ka-monitor 多数是 filter，不是打分排序"]
+    Q --> R["最终复习闭环：场景判断 -> _score 原理 -> 多字段组合 -> boost/function_score -> explain 验证 -> 项目取舍"]
+```
+
+复习时可以按这几个问题自测：
+
+```text
+1. 这个查询到底需不需要 _score？
+2. match 放在 filter 里还会不会参与相关性排序？
+3. boost 是百分比吗？
+4. multi_match 的 best_fields、most_fields、cross_fields 分别适合什么场景？
+5. bool.should 在只有 should 和已有 must/filter 时语义有什么不同？
+6. requestArgs / responseArgs 这种大字段为什么不适合给太高权重？
+7. 当前项目为什么大多数 ES 查询更适合 filter + sort？
+```
+
+### 23.2 面试讲解思路流程图
+
+面试讲多字段打分时，核心是把 `_score`、`query/filter context`、`multi_match/boost`、`function_score` 的边界讲清楚。
+
+```mermaid
+flowchart TD
+    A["面试官问：ES 多字段打分怎么做？"] --> B["先回答本质：_score 表示文档和查询的相关性，默认用于相关性排序"]
+    B --> C["先区分场景：结构化查询不一定需要分数，全文搜索才重点关注分数"]
+
+    C --> D1["结构化查询例子：traceId、status、customerCode、requestDate"]
+    D1 --> E1["放 bool.filter：只过滤，不算相关性，适合后台查询"]
+
+    C --> D2["全文搜索例子：标题、内容、标签、错误信息、接口名称"]
+    D2 --> E2["放 match / multi_match / bool.must：进入 query context，计算 _score"]
+
+    E2 --> F["解释 _score 来源：Lucene 默认相关性算法可理解为 BM25"]
+    F --> G1["TF：词出现情况，出现越多通常越相关，但会饱和"]
+    F --> G2["IDF：词越少见区分度越高，分数贡献越大"]
+    F --> G3["字段长度：短字段命中通常更聚焦"]
+    F --> G4["boost：人为提高字段或条件重要性"]
+
+    G1 --> H["讲多字段实现方式"]
+    G2 --> H
+    G3 --> H
+    G4 --> H
+
+    H --> I1["方案一：multi_match fields 配权重，例如 title^5、tags^3、content"]
+    H --> I2["方案二：bool.should 每个字段一个 match，并设置 boost"]
+    H --> I3["方案三：function_score 叠加业务权重，例如推荐、时间、热度"]
+
+    I1 --> J1["best_fields：命中最好的字段主导分数"]
+    I1 --> J2["most_fields：多个字段命中累加优势"]
+    I1 --> J3["cross_fields：多个字段组成一个逻辑字段"]
+
+    I2 --> K1["优点：每个字段能设置不同 operator、match_phrase、boost"]
+    I2 --> K2["注意：should 既可以 OR，也可以加分，要看 bool 里是否已有 must/filter"]
+
+    I3 --> L1["注意 boost 不是固定百分比"]
+    L1 --> L2["最终分数还受 BM25、字段长度、分词、查询类型、boost_mode 影响"]
+
+    J1 --> M["讲调优方法：用真实搜索词、真实数据、真实 analyzer 测试"]
+    J2 --> M
+    J3 --> M
+    K1 --> M
+    K2 --> M
+    L2 --> M
+
+    M --> N["用 _analyze 看分词"]
+    N --> O["用 explain 看每个字段、每个 term 对 _score 的贡献"]
+    O --> P["根据结果调整字段权重、查询类型和业务权重"]
+
+    P --> Q["结合项目经验：当前 ka-monitor 主要是日志筛选"]
+    Q --> R["LogService 的 match/match_phrase 放在 filter 中，所以不做相关性排序"]
+    Q --> S["InternalOpenService 有 interfaceCode/interfaceName 的 should + wildcard，但没有 boost，也放在 filter 中"]
+    S --> T["收尾：如果未来要做真正搜索排序，再引入 multi_match、boost、function_score 和 explain 调优"]
+```
+
+面试可以压缩成一段话：
+
+```text
+ES 多字段打分我会先区分 query context 和 filter context。
+如果是 traceId、状态、时间范围这种后台筛选，我会放到 bool.filter，因为只关心是否命中，不需要 _score。
+如果是标题、内容、标签这种全文搜索，我会用 multi_match 或 bool.should 让多个字段参与打分。multi_match 可以通过 fields 里的 title^5、tags^3、content 控制字段重要性，但 boost 不是百分比，只是相关性权重倾向，最终分数还会受 BM25 的词频、IDF、字段长度、分词结果影响。
+如果还要叠加业务因素，比如是否推荐、时间热度、客户等级，可以用 function_score。调优时我会用 _analyze 看分词，用 explain 看每个 term 和字段对 _score 的贡献。
+当前项目 ka-monitor 里多数查询是日志筛选，所以更多用 filter + sort，而不是多字段打分排序。
+```
+
+## 24. 参考来源
+
+### 24.1 本次输入背景
 
 - ChatGPT 对话：`ES类型和常用命令`
   - 用作本笔记的问题背景，重点参考其中关于 `_score`、分词器、多字段权重、`_explain` 的讨论。
 
-### 22.2 Elastic 官方文档
+### 24.2 Elastic 官方文档
 
 - Multi-match query
   - https://www.elastic.co/docs/reference/query-languages/query-dsl/query-dsl-multi-match-query
@@ -1277,4 +1669,3 @@ explain 负责拆解每个分数来源
   - https://www.elastic.co/docs/api/doc/elasticsearch/v8/operation/operation-explain
 - Ranking and reranking
   - https://www.elastic.co/docs/solutions/search/ranking
-

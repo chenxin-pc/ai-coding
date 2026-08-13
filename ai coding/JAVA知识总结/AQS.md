@@ -496,3 +496,41 @@ AQS 是 JUC 同步器的底层框架：用 `state` 表示资源状态，用 FIFO
 如果面试问“项目里哪里用到了 AQS”，更稳妥的回答是：
 
 当前业务代码没有直接继承或使用 `AbstractQueuedSynchronizer`，也没有直接使用 `ReentrantLock`、`Semaphore`、`CountDownLatch`。但项目大量使用 JUC 上层并发组件，例如线程池、`CompletableFuture`、原子类。AQS 是理解这些并发工具底层设计的重要基础，但不是当前项目中的直接业务 API。
+## 17. 复习与面试讲解流程图
+
+### 17.1 复习思路流程图
+
+```mermaid
+flowchart TD
+    A["开始复习 AQS"] --> B["先明确定位：AQS 是 Java 并发同步器的基础框架"]
+    B --> C["理解核心目标：用一个 state 状态 + FIFO 等待队列实现阻塞和唤醒"]
+    C --> D["掌握 state：ReentrantLock 表示重入次数，Semaphore 表示许可数，CountDownLatch 表示计数"]
+    D --> E["掌握队列：获取失败的线程封装成 Node，进入 CLH 变体队列排队"]
+    E --> F["学习独占模式：tryAcquire 成功则拿锁，失败则入队 park"]
+    F --> G["独占释放：tryRelease 修改 state，完全释放后 unpark 后继节点"]
+    G --> H["学习共享模式：tryAcquireShared 返回值决定是否成功以及是否继续传播"]
+    H --> I["共享释放：releaseShared 唤醒后继，并可能继续传播给更多等待线程"]
+    I --> J["理解模板方法：AQS 管排队、阻塞、唤醒；子类只实现资源获取/释放逻辑"]
+    J --> K["看典型实现：ReentrantLock / CountDownLatch / Semaphore / ReentrantReadWriteLock"]
+    K --> L["学习公平与非公平：公平先看队列，非公平允许新线程直接竞争"]
+    L --> M["学习 Condition：await 从同步队列转到条件队列，signal 再转回同步队列"]
+    M --> N["最终闭环：state -> CAS 改状态 -> 获取失败入队 -> park -> release 唤醒 -> 子类实现语义"]
+```
+
+### 17.2 面试讲解思路流程图
+
+```mermaid
+flowchart TD
+    A["面试官问 AQS"] --> B["先讲定位：AQS 是构建锁和同步器的框架，JUC 很多类都基于它"]
+    B --> C["讲两个核心：volatile int state 表示同步状态，FIFO 队列管理等待线程"]
+    C --> D["讲职责拆分：AQS 负责排队、阻塞、唤醒；子类负责 tryAcquire/tryRelease 等语义"]
+    D --> E["讲独占锁流程：线程 CAS 修改 state 成功则获得锁"]
+    E --> F["失败则封装 Node 加入等待队列，前驱稳定后 park 挂起"]
+    F --> G["释放锁时修改 state，完全释放后唤醒队列中合适的后继节点"]
+    G --> H["讲共享模式：多个线程可以同时成功，比如 Semaphore 许可、CountDownLatch 等待计数归零"]
+    H --> I["讲公平非公平：公平锁先检查队列前面是否有人，非公平锁先抢一次 state"]
+    I --> J["讲 Condition：await 释放锁进入条件队列，signal 转移到同步队列重新竞争锁"]
+    J --> K["举例落地：ReentrantLock 用 state 表示重入次数，CountDownLatch 用 state 表示剩余计数，Semaphore 用 state 表示许可"]
+    K --> L["讲关联知识：state 修改依赖 CAS，线程挂起唤醒依赖 LockSupport"]
+    L --> M["收尾：AQS 的核心不是某一把锁，而是用 state + 队列 + CAS + park/unpark 抽象出同步器通用流程"]
+```

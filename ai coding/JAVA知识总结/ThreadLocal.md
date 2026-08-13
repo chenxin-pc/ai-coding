@@ -455,3 +455,39 @@ try {
 - 当前线程工具对象：`SimpleDateFormat` 隔离。
 
 复习时要重点记住：凡是 Web 请求线程、线程池线程、异步任务线程中使用 `ThreadLocal.set()`，都必须关注 `finally remove()`。
+## 16. 复习与面试讲解流程图
+
+### 16.1 复习思路流程图
+
+```mermaid
+flowchart TD
+    A["开始复习 ThreadLocal"] --> B["先明确定位：给每个线程保存一份独立变量副本"]
+    B --> C["理解它不是用来解决共享变量并发修改，而是避免共享"]
+    C --> D["掌握基本 API：set / get / remove / initialValue"]
+    D --> E["进入底层结构：Thread 对象持有 ThreadLocalMap"]
+    E --> F["ThreadLocalMap 的 key 是 ThreadLocal 弱引用，value 是业务对象强引用"]
+    F --> G["理解为什么会泄漏：key 被 GC 后 value 仍可能挂在线程上"]
+    G --> H["结合线程池：线程长期复用，ThreadLocalMap 也长期存在，泄漏和脏数据风险更明显"]
+    H --> I["形成固定习惯：try finally remove"]
+    I --> J["区分 InheritableThreadLocal：只适合创建子线程时复制，不适合线程池任务隔离"]
+    J --> K["理解异步上下文：CompletableFuture、线程池、MQ 消费场景不会天然传递 ThreadLocal"]
+    K --> L["结合项目：看 TraceId、用户上下文、租户、日志 MDC、框架 Context 工具"]
+    L --> M["最终闭环：线程隔离 -> ThreadLocalMap -> 弱引用 key -> remove -> 线程池坑 -> 上下文传递"]
+```
+
+### 16.2 面试讲解思路流程图
+
+```mermaid
+flowchart TD
+    A["面试官问 ThreadLocal"] --> B["先讲定义：ThreadLocal 为每个线程提供独立变量副本"]
+    B --> C["讲适用场景：用户上下文、TraceId、事务资源、日期格式对象、日志 MDC"]
+    C --> D["强调边界：它不是锁，不是让多个线程安全共享一个对象，而是让每个线程各用各的"]
+    D --> E["讲底层：Thread 内部有 ThreadLocalMap，Entry 的 key 是 ThreadLocal 弱引用，value 是强引用"]
+    E --> F["讲内存泄漏：ThreadLocal 实例没强引用后 key 可能被回收，但 value 还在线程的 map 里"]
+    F --> G["讲线程池风险：线程不销毁，旧 value 可能长期存在，甚至被下一个任务读到"]
+    G --> H["讲最佳实践：set 后必须 finally remove，尤其 Web 请求、线程池任务、异步任务"]
+    H --> I["讲 InheritableThreadLocal：子线程创建时复制父线程值，线程池复用下不可靠"]
+    I --> J["讲异步上下文：跨线程要显式包装任务或使用框架上下文传递工具"]
+    J --> K["结合项目回答：TraceId、日志链路、用户/租户上下文都可能用到，重点是入口设置、出口清理、异步传递"]
+    K --> L["收尾：ThreadLocal 的核心是线程隔离，面试重点是底层 ThreadLocalMap、弱引用、remove 和线程池污染"]
+```

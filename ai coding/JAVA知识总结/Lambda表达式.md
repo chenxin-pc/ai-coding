@@ -549,3 +549,39 @@ Lambda 表达式是 Java 对函数式编程的语法支持，本质上是函数�
 - 异步任务构建：把每个分片或远程调用映射成一个 `CompletableFuture`。
 
 复习时不要只背语法，要重点看 `PartitionExecutorUtil` 和 `InvokerUtil`，这两个类体现了 Lambda 在项目中“抽象业务动作”的真实价值。
+## 15. 复习与面试讲解流程图
+
+### 15.1 复习思路流程图
+
+```mermaid
+flowchart TD
+    A["开始复习 Lambda"] --> B["先明确定位：Lambda 是函数式编程语法，用更简洁的方式表示行为"]
+    B --> C["理解前提：只能赋值给函数式接口，也就是只有一个抽象方法的接口"]
+    C --> D["掌握语法：参数列表 -> 方法体"]
+    D --> E["从匿名内部类对比：Comparator、Runnable、Consumer 等代码更短"]
+    E --> F["学习内置函数式接口：Function / Consumer / Supplier / Predicate / Runnable / Comparator"]
+    F --> G["学习方法引用：对象::实例方法，类::静态方法，类::实例方法，构造器引用"]
+    G --> H["理解变量捕获：只能捕获 final 或 effectively final 的局部变量"]
+    H --> I["理解和匿名内部类区别：this 指向、变量作用域、编译实现、适用接口"]
+    I --> J["进入 Stream：filter / map / flatMap / sorted / collect / groupingBy"]
+    J --> K["学习使用边界：不要写复杂 Lambda，不要滥用链式 Stream，不要在 Stream 中做副作用修改"]
+    K --> L["结合项目：集合转换、过滤、分组、判空映射、异步回调、策略传递"]
+    L --> M["最终闭环：函数式接口 -> Lambda 语法 -> 方法引用 -> 变量捕获 -> Stream 实战 -> 可读性边界"]
+```
+
+### 15.2 面试讲解思路流程图
+
+```mermaid
+flowchart TD
+    A["面试官问 Lambda"] --> B["先讲定义：Lambda 是 Java 8 引入的函数式编程语法，用来表示一段可传递的行为"]
+    B --> C["讲前提：目标类型必须是函数式接口，常见如 Runnable、Comparator、Function、Consumer、Predicate"]
+    C --> D["讲语法：参数 -> 表达式或代码块，编译器根据目标接口推断参数和返回值"]
+    D --> E["讲优势：减少匿名内部类样板代码，让集合处理和回调更清晰"]
+    E --> F["讲方法引用：当 Lambda 只是调用已有方法时，可以用 :: 简化"]
+    F --> G["讲变量捕获：局部变量必须 final 或 effectively final，避免闭包中变量语义混乱"]
+    G --> H["讲和匿名内部类区别：匿名内部类会生成独立类结构，Lambda 更像 invokedynamic 生成的函数对象；this 指向也不同"]
+    H --> I["讲 Stream 关系：Lambda 常作为 Stream 的 filter、map、sorted、forEach 行为参数"]
+    I --> J["讲注意事项：复杂业务不要硬写链式 Lambda，调试困难；避免在 Stream 中修改外部共享状态"]
+    J --> K["结合项目回答：常用于集合转换、过滤、分组、构造 Map、异步回调和策略扩展"]
+    K --> L["收尾：Lambda 的核心价值是行为参数化，但生产代码要在简洁和可读性之间取平衡"]
+```

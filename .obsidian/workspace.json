@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "c29088c35cf79d84",
+        "id": "d85742cd6c059b2a",
         "type": "tabs",
         "children": [
           {
-            "id": "53b4b2dd115d397b",
+            "id": "63cfca9f50f4e499",
             "type": "leaf",
             "state": {
               "type": "empty",
@@ -181,8 +181,10 @@
       "bases:新建数据库": false
     }
   },
-  "active": "53b4b2dd115d397b",
+  "active": "63cfca9f50f4e499",
   "lastOpenFiles": [
+    "ai coding/JAVA知识总结/Java单例模式.md",
+    "ai coding/JAVA知识总结/Java代理模式.md",
     "ai coding/JAVA知识总结/Elasticsearch多字段打分规则.md",
     "ai coding/JAVA知识总结/Elasticsearch类型命令与原理.md",
     "ai coding/JAVA知识总结/Lambda表达式.md",
@@ -211,8 +213,6 @@
     "ai coding/微服务知识库/外开 1/apifox.md",
     "ai coding/微服务知识库/外开 1",
     "ai coding/微服务知识库/外开/供应商提示词",
-    "ai coding/微服务知识库/外开/适配器.md",
-    "ai coding/初始化项目流程/初始化流程.md",
-    "ai coding/初始化项目流程/config.yaml.md"
+    "ai coding/微服务知识库/外开/适配器.md"
   ]
 }

@@ -464,3 +464,41 @@ CompletableFuture<List<Order>> future = CompletableFuture
 - 公共封装：`PartitionExecutorUtil`、`InvokerUtil`
 - 并行聚合：`BaiLiCustomizedParameterInvoker`、`AeCainiaoService`、`PoizonService`
 - 线程池配合：`BusinessCommonConfiguration`、`OrderConfiguration`、`SolutionConfiguration`
+## 15. 复习与面试讲解流程图
+
+### 15.1 复习思路流程图
+
+```mermaid
+flowchart TD
+    A["开始复习 CompletableFuture"] --> B["先明确定位：它是 Future 的增强版，支持异步任务、回调、组合、异常处理"]
+    B --> C["对比 Future：Future 只能 get 阻塞等待，CompletableFuture 可以链式编排"]
+    C --> D["掌握创建方式：completedFuture / supplyAsync / runAsync / 手动 complete"]
+    D --> E["区分任务类型：有返回值用 supplyAsync，无返回值用 runAsync"]
+    E --> F["理解线程来源：不传 Executor 默认 commonPool，生产建议传自定义线程池"]
+    F --> G["学习回调：thenApply 转换结果，thenAccept 消费结果，thenRun 只执行后续动作"]
+    G --> H["区分 Async 后缀：不带 Async 可能复用前置任务线程，带 Async 会提交到线程池"]
+    H --> I["学习组合：thenCompose 串行依赖，thenCombine 合并两个结果，allOf 等全部，anyOf 等任意一个"]
+    I --> J["学习异常：exceptionally 兜底，handle 正常/异常都处理，whenComplete 观察结果但不适合吞异常"]
+    J --> K["学习等待：join 抛 CompletionException，get 抛受检异常"]
+    K --> L["学习超时：orTimeout 让任务超时失败，completeOnTimeout 给默认值"]
+    L --> M["结合项目：看是否有异步 RPC、批量查询、并行聚合、异步通知场景"]
+    M --> N["最终闭环：创建任务 -> 指定线程池 -> 链式回调 -> 组合任务 -> 异常/超时 -> 等待结果 -> 生产治理"]
+```
+
+### 15.2 面试讲解思路流程图
+
+```mermaid
+flowchart TD
+    A["面试官问 CompletableFuture"] --> B["先讲定位：用于异步编程和任务编排，是 Future 的增强"]
+    B --> C["讲 Future 痛点：get 阻塞、无法方便回调、多个任务组合麻烦、异常处理不优雅"]
+    C --> D["讲创建：supplyAsync 有返回值，runAsync 无返回值，可以传自定义 Executor"]
+    D --> E["强调生产点：不要默认依赖 commonPool，避免和其他异步任务互相影响"]
+    E --> F["讲链式处理：thenApply 做转换，thenAccept 消费结果，thenRun 做收尾动作"]
+    F --> G["讲串并关系：thenCompose 解决前后依赖，thenCombine 合并两个独立任务，allOf 做批量并行汇总"]
+    G --> H["讲异常：exceptionally 兜底返回，handle 正常异常都能改结果，whenComplete 通常做日志观察"]
+    H --> I["讲等待：join 更适合链式代码但异常是 CompletionException，get 需要处理 checked exception"]
+    I --> J["讲超时：异步任务一定要有超时和降级，避免请求线程长期等待"]
+    J --> K["讲风险：线程池隔离、异常吞掉、allOf 后逐个 join、上下文 ThreadLocal 传递、阻塞调用混进异步链"]
+    K --> L["结合项目回答：适合并行查多个远程接口、批量处理数据、异步发送通知，但要配合业务线程池和日志监控"]
+    L --> M["收尾：CompletableFuture 的核心不是异步本身，而是异步任务的编排、异常、超时和线程池治理"]
+```
