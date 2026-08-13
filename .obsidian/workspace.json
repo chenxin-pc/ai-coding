@@ -4,21 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "aa4d7fa18aecad2d",
+        "id": "c29088c35cf79d84",
         "type": "tabs",
         "children": [
           {
-            "id": "04cf397600edec31",
+            "id": "53b4b2dd115d397b",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "ai coding/JAVA知识总结/CAS.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "CAS"
+              "title": "新标签页"
             }
           }
         ]
@@ -99,7 +95,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "ai coding/JAVA知识总结/CAS.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -186,21 +181,24 @@
       "bases:新建数据库": false
     }
   },
-  "active": "04cf397600edec31",
+  "active": "53b4b2dd115d397b",
   "lastOpenFiles": [
-    "ai coding/JAVA知识总结/ThreadLocal.md",
+    "ai coding/JAVA知识总结/Elasticsearch多字段打分规则.md",
+    "ai coding/JAVA知识总结/Elasticsearch类型命令与原理.md",
     "ai coding/JAVA知识总结/Lambda表达式.md",
-    "ai coding/JAVA知识总结/线程池.md",
-    "ai coding/JAVA知识总结/AQS.md",
-    "ai coding/JAVA知识总结/CompletableFuture.md",
+    "ai coding/微服务知识库/外开/供应商提示词/UU跑腿生成需求文档提示词.md",
+    "ai coding/学习内容/codex 安装.md",
     "ai coding/JAVA知识总结/CAS.md",
+    "ai coding/JAVA知识总结/AQS.md",
+    "ai coding/JAVA知识总结/线程池.md",
+    "ai coding/JAVA知识总结/ThreadLocal.md",
+    "ai coding/JAVA知识总结/CompletableFuture.md",
     "ai coding/微服务知识库/外开/接口生成提示词.md",
     "ai coding/微服务知识库/路由服务/全量节点归属速查.md",
     "ai coding/微服务知识库/外开/apifox.md",
     "ai coding/JAVA知识总结",
     "ai coding/微服务知识库/外开/开发流程/生成接口文档并同步到apifox提示词.md",
     "ai coding/微服务知识库/外开/开发流程/生成需求文档提示词.md",
-    "ai coding/微服务知识库/外开/供应商提示词/UU跑腿生成需求文档提示词.md",
     "ai coding/微服务知识库/外开/开发流程/创建适配器技能.md",
     "ai coding/微服务知识库/外开/供应商提示词/宝奇.md",
     "ai coding/微服务知识库/外开/开发流程",
@@ -215,8 +213,6 @@
     "ai coding/微服务知识库/外开/供应商提示词",
     "ai coding/微服务知识库/外开/适配器.md",
     "ai coding/初始化项目流程/初始化流程.md",
-    "ai coding/初始化项目流程/config.yaml.md",
-    "ai coding/初始化项目流程/gitignore文件.md",
-    "欢迎.md"
+    "ai coding/初始化项目流程/config.yaml.md"
   ]
 }
