@@ -810,3 +810,14 @@ flowchart TD
 - [JavaGuide - 设计模式常见面试题总结](https://interview.javaguide.cn/system-design/design-pattern.html)
 - [JavaGuide - Spring 中的设计模式详解](https://javaguide.cn/system-design/framework/spring/spring-design-patterns-summary.html)
 - [JavaGuide - Java 关键字总结：静态内部类实现单例](https://javaguide.cn/java/basis/java-keyword-summary.html)
+
+
+* 单例模式解决什么问题？ 减少类创建、方便管理对象生命周期  
+* 如何实现单例：饿汉式、懒汉式（DCL）、枚举类（类初始化机制、反序列化、防反射）  
+* 在实际中，基于JVM实现的单例往往用的比较少，因为开发业务往往是结合spring框架，但是我们需要了解如何去防止反射和DCL的思想  
+* 传统基于类加载器创建对应单例对象（保证一个类在JVM中只有一个实例）  
+* spring框架是基于IOC容器创建单例对象  
+* 场景：线程池、应用缓存  
+* 注意事项：类中存在共享变量引发的并发问题
+* 联想：有序性、可见性、原子性、synchronized、volatile、八大原子操作、MESI协议
+

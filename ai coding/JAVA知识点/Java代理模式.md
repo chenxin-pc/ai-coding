@@ -1007,3 +1007,10 @@ Spring AOP、@Transactional、@Cacheable 都是基于代理的，所以调用必
   - https://docs.spring.io/spring-framework/reference/core/aop/introduction-proxies.html
 - Spring Framework：Declarative Transaction Implementation
   - https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-decl-explained.html
+
+
+* 代理模式解决的问题  
+* 实现的模式，静态代理、动态代理  
+* 实现方式：JDK动态代理（接口,proxy,InvocationHandler）、cglb动态代理（继承，enhancer、methodIntercepte）  
+* 场景：AOP、事务、日志、缓存注解
+

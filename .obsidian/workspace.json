@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "d85742cd6c059b2a",
+        "id": "68b2717e904d8f1b",
         "type": "tabs",
         "children": [
           {
-            "id": "63cfca9f50f4e499",
+            "id": "294ebfd48f5a8992",
             "type": "leaf",
             "state": {
               "type": "empty",
@@ -181,24 +181,28 @@
       "bases:新建数据库": false
     }
   },
-  "active": "63cfca9f50f4e499",
+  "active": "294ebfd48f5a8992",
   "lastOpenFiles": [
-    "ai coding/JAVA知识总结/Java单例模式.md",
-    "ai coding/JAVA知识总结/Java代理模式.md",
-    "ai coding/JAVA知识总结/Elasticsearch多字段打分规则.md",
-    "ai coding/JAVA知识总结/Elasticsearch类型命令与原理.md",
-    "ai coding/JAVA知识总结/Lambda表达式.md",
+    "ai coding/JAVA知识点/Java模板方法模式.md",
+    "ai coding/JAVA知识点/Java装饰器模式.md",
     "ai coding/微服务知识库/外开/供应商提示词/UU跑腿生成需求文档提示词.md",
+    "ai coding/JAVA知识点/Java适配器模式.md",
+    "ai coding/JAVA知识点/Java工厂模式.md",
+    "ai coding/JAVA知识点/Java单例模式.md",
+    "ai coding/JAVA知识点/Java代理模式.md",
+    "ai coding/JAVA知识点/Elasticsearch多字段打分规则.md",
+    "ai coding/JAVA知识点/Elasticsearch类型命令与原理.md",
+    "ai coding/JAVA知识点/Lambda表达式.md",
     "ai coding/学习内容/codex 安装.md",
-    "ai coding/JAVA知识总结/CAS.md",
-    "ai coding/JAVA知识总结/AQS.md",
-    "ai coding/JAVA知识总结/线程池.md",
-    "ai coding/JAVA知识总结/ThreadLocal.md",
-    "ai coding/JAVA知识总结/CompletableFuture.md",
+    "ai coding/JAVA知识点/CAS.md",
+    "ai coding/JAVA知识点/AQS.md",
+    "ai coding/JAVA知识点/线程池.md",
+    "ai coding/JAVA知识点/ThreadLocal.md",
+    "ai coding/JAVA知识点/CompletableFuture.md",
     "ai coding/微服务知识库/外开/接口生成提示词.md",
     "ai coding/微服务知识库/路由服务/全量节点归属速查.md",
     "ai coding/微服务知识库/外开/apifox.md",
-    "ai coding/JAVA知识总结",
+    "ai coding/JAVA知识点",
     "ai coding/微服务知识库/外开/开发流程/生成接口文档并同步到apifox提示词.md",
     "ai coding/微服务知识库/外开/开发流程/生成需求文档提示词.md",
     "ai coding/微服务知识库/外开/开发流程/创建适配器技能.md",
@@ -207,12 +211,8 @@
     "ai coding/微服务知识库/外开 1/UU跑腿/UU跑腿生成需求文档提示词.md",
     "ai coding/微服务知识库/外开 1/生成接口文档并同步到apifox提示词.md",
     "ai coding/微服务知识库/外开 1/生成需求文档提示词.md",
-    "ai coding/微服务知识库/外开 1/接口生成提示词.md",
-    "ai coding/微服务知识库/外开 1/创建适配器技能.md",
     "ai coding/微服务知识库/外开 1/UU跑腿",
-    "ai coding/微服务知识库/外开 1/apifox.md",
     "ai coding/微服务知识库/外开 1",
-    "ai coding/微服务知识库/外开/供应商提示词",
-    "ai coding/微服务知识库/外开/适配器.md"
+    "ai coding/微服务知识库/外开/供应商提示词"
   ]
 }

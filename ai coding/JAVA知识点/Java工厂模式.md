@@ -796,3 +796,14 @@ flowchart TD
 - [Spring Framework - Using the @Bean Annotation](https://docs.spring.io/spring-framework/reference/core/beans/java/bean-annotation.html)
 - [JavaGuide - 设计模式常见面试题总结](https://interview.javaguide.cn/system-design/design-pattern.html)
 - [JavaGuide - Spring 中的设计模式详解](https://javaguide.cn/system-design/framework/spring/spring-design-patterns-summary.html)
+
+* 工厂模式解决的问题  
+* 简单工厂模式、方法工厂、抽象工厂  
+* 简单工厂：多个对象的创建放在一个工厂中，用类型做区分 存在问题：开闭原则  
+* 方法工厂：一个对象对应一个工厂，加对象时，加对应的工厂即可  存在问题：类太多  
+* 抽象工厂模式：  
+* 一类业务对象抽象成一个工厂接口（下单、支付、退款），具体创建对象的步骤放在具体实现，后续加对象时，只需要实现工厂接口即可(需要提前设计，熟悉业务)  
+* 支付宝下单、支付、退款  
+* 微信下单、支付、退款  
+* 业务场景：beanFactory、下单工厂（支持全部成功下单、支持部分成功下单、支持同步、支持异常）
+
