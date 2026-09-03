@@ -1731,3 +1731,287 @@ ES 多字段打分我会先区分 query context 和 filter context。
   - https://www.elastic.co/docs/api/doc/elasticsearch/v8/operation/operation-explain
 - Ranking and reranking
   - https://www.elastic.co/docs/solutions/search/ranking
+
+PUT /es_research
+{
+  "mappings": {
+    "properties": {
+      "reportId": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "第三方研报业务ID，用于数据同步、更新和关联；不是ES文档_id"
+        }
+      },
+      "title": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报标题，是关键词检索的核心字段，支持搜索结果高亮"
+        }
+      },
+      "releaseTime": {
+        "type": "long",
+        "meta": {
+          "description": "研报发布时间，单位为毫秒时间戳；用于时间范围过滤、排序和时间衰减评分"
+        }
+      },
+      "typeId": {
+        "type": "integer",
+        "meta": {
+          "description": "研报类型ID，关联研报类型或标签表，用于按研报类型过滤"
+        }
+      },
+      "typeName": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报类型名称，是typeId对应名称的冗余展示字段"
+        }
+      },
+      "status": {
+        "type": "integer",
+        "meta": {
+          "description": "上下架状态：0上架、1下架；正常搜索固定过滤status=0"
+        }
+      },
+      "isDel": {
+        "type": "integer",
+        "meta": {
+          "description": "逻辑删除状态：0未删除、1已删除；正常搜索固定过滤isDel=0"
+        }
+      },
+      "source": {
+        "type": "integer",
+        "meta": {
+          "description": "研报业务来源编码，复制自Research.source；0未知、1浙商，其他值以来源字典为准；不是originSource"
+        }
+      },
+      "ossUrl": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报PDF在OSS中的访问地址；当前研报写入ES时要求该字段非空"
+        }
+      },
+      "pdfNum": {
+        "type": "integer",
+        "meta": {
+          "description": "研报PDF页数，用于页数筛选和搜索结果展示"
+        }
+      },
+      "authorNames": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报作者或分析师名称集合，用于作者名称关键词检索"
+        }
+      },
+      "investmentIds": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "作者关联的投资主体或注册主体ID集合，来源于作者registerId，用于按用户或投资主体过滤"
+        }
+      },
+      "investmentType": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "作者关联主体类型集合，来源于registerType；代码中存在按类型0进行筛选的逻辑"
+        }
+      },
+      "newFortuneAwards": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "作者是否获得新财富奖项的状态集合：0否、1是；用于筛选新财富作者研报"
+        }
+      },
+      "industryIds": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报关联行业ID集合，用于行业条件过滤"
+        }
+      },
+      "industryNames": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报关联行业名称集合，用于行业名称检索和结果展示"
+        }
+      },
+      "fullCodes": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报关联证券完整代码集合，通常包含交易所后缀，用于精确筛选证券"
+        }
+      },
+      "companyNames": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报关联公司名称集合，是关键词搜索的主要匹配字段之一"
+        }
+      },
+      "stockCodes": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报关联证券普通股票代码集合，不包含或不强调交易所后缀"
+        }
+      },
+      "organizationNames": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报发布机构名称集合，用于机构名称检索和结果展示"
+        }
+      },
+      "organizationIds": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报发布机构ID集合，用于机构过滤；当前研报写入和搜索时要求该字段存在"
+        }
+      },
+      "labelIds": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报标签ID集合，用于标签过滤；主研报同步中的标签处理目前被注释，主要由独立标签同步维护"
+        }
+      },
+      "labelNames": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报标签名称集合，用于搜索结果展示"
+        }
+      },
+      "summary": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报概要内容，参与关键词全文检索"
+        }
+      },
+      "summaryPoint": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "研报核心观点或观点摘要，用于观点检索和结果展示"
+        }
+      },
+      "currentRatingIds": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "meta": {
+          "description": "当前评级编码集合，由公司和行业本期评级数据汇总；1卖出、2买入、3减持、4增持、5中性"
+        }
+      }
+    }
+  }
+}
