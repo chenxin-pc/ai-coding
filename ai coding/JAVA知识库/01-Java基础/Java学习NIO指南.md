@@ -783,6 +783,8 @@ Worker Thread Pool
 
 ## 13. 第十二阶段：进入 Netty
 
+配套笔记：[Netty 核心知识点](./Netty核心知识点.md)，覆盖 EchoServer、EventLoop、Pipeline、Handler、ChannelFuture、ByteBuf、池化、零拷贝和 TCP 分帧。
+
 完成 NIO 和 Reactor 后再学习 Netty，可以把框架概念与底层知识对应起来：
 
 ```text
