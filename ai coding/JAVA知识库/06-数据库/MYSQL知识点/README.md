@@ -25,6 +25,8 @@
 
 默认基于 MySQL 8.x 和 InnoDB。遇到版本相关问题时，应先向面试官确认 MySQL 版本，不要把旧版本结论机械套用到所有环境。
 
+专项场景：[大数据量加字段：MySQL 5.7 与 Elasticsearch](../../场景题复习/大数据量加字段-MySQL5.7与Elasticsearch.md)，覆盖 5.7 Online DDL、gh-ost、公开工程实践、ES 历史回填和迁移切换，与本目录默认的 8.x 版本范围区分阅读。
+
 专题总结：[MySQL 架构、数据过滤与索引下推](./08-MySQL架构与索引下推.md)，串联 Server 与 InnoDB 的职责、条件过滤位置、ICP 执行过程及回表次数对比。
 
 ## 2. 七阶段路线

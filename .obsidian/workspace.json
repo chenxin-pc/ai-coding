@@ -4,17 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "f463db76cf681bec",
+        "id": "5996c7927bc58e0e",
         "type": "tabs",
         "children": [
           {
-            "id": "9ccbb07c4c87a2df",
+            "id": "7af5fc5758df4dc9",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "ai coding/JAVA知识库/07-中间件/Elasticsearch类型命令与原理.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "新标签页"
+              "title": "Elasticsearch类型命令与原理"
             }
           }
         ]
@@ -79,7 +83,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 370.16668701171875
+    "width": 298.8984375
   },
   "right": {
     "id": "6f8fd6f80cb15c04",
@@ -95,9 +99,10 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "ai coding/JAVA知识库/03-JVM/JVM问题排查思路.md",
                 "collapseAll": false,
-                "extraContext": false,
-                "sortOrder": "alphabetical",
+                "extraContext": true,
+                "sortOrder": "alphabeticalReverse",
                 "showSearch": false,
                 "searchQuery": "",
                 "backlinkCollapsed": false,
@@ -155,6 +160,7 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "ai coding/JAVA知识库/07-中间件/Elasticsearch类型命令与原理.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -163,12 +169,12 @@
               "title": "大纲"
             }
           }
-        ]
+        ],
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 502.38671875
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -181,35 +187,35 @@
       "bases:新建数据库": false
     }
   },
-  "active": "9ccbb07c4c87a2df",
+  "active": "7af5fc5758df4dc9",
   "lastOpenFiles": [
-    "ai coding/初始化项目流程/config.yaml.md",
-    "ai coding/初始化项目流程/初始化流程.md",
-    "ai coding/微服务知识库/外开/apifox.md",
-    "ai coding/微服务知识库/外开/接口生成提示词.md",
-    "ai coding/微服务知识库/外开/供应商提示词/宝奇.md",
-    "ai coding/微服务知识库/外开/供应商提示词/UU跑腿生成需求文档提示词.md",
-    "ai coding/JAVA知识点/Java学习NIO指南.md",
-    "ai coding/学习内容/workspace-worktree-knowledge.md",
-    "ai coding/JAVA知识点/线程池.md",
-    "ai coding/JAVA知识点/CAS.md",
-    "ai coding/JAVA知识点/AQS.md",
-    "ai coding/微服务知识库/外开/开发流程/生成需求文档提示词.md",
-    "ai coding/微服务知识库/外开/开发流程/生成接口文档并同步到apifox提示词.md",
-    "ai coding/JAVA知识点/项目设计模式实战总结.md",
-    "ai coding/JAVA知识点/JVM问题排查思路.md",
-    "ai coding/JAVA知识点/Java模板方法模式.md",
-    "ai coding/JAVA知识点/Java观察者模式.md",
-    "ai coding/学习内容/RAGFlow.md",
-    "ai coding/学习内容/VPN.md",
-    "ai coding/学习内容/python知识点.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/03-事务MVCC与锁.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/02-索引与执行计划.md",
+    "ai coding/JAVA知识库/07-中间件/Elasticsearch类型命令与原理.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/06-SQL手写与项目表达.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/05-SQL优化与场景题.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/04-InnoDB与日志.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/01-SQL与字段基础.md",
+    "ai coding/JAVA知识库/08-网络知识/01-HTTP基础与请求方法.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/08-MySQL架构与索引下推.md",
+    "ai coding/JAVA知识库/场景题复习/大数据量加字段-MySQL5.7与Elasticsearch.md",
+    "ai coding/JAVA知识库/09-可观测性/README.md",
+    "ai coding/JAVA知识库/09-可观测性/02-Java火焰图.md",
+    "ai coding/JAVA知识库/场景题复习/线上问题排查.md",
+    "ai coding/JAVA知识库/场景题复习/下单场景中的线程池与请求容量.md",
+    "ai coding/JAVA知识库/场景题复习/Redis缓存与限流场景题.md",
+    "ai coding/JAVA知识库/10-容器与部署/Docker入门学习指南.md",
+    "ai coding/JAVA知识库/09-可观测性/01-Java链路追踪.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/07-数据库连接池与面试题.md",
+    "ai coding/JAVA知识库/06-数据库/MYSQL知识点/README.md",
+    "ai coding/JAVA知识库/05-Spring/Spring核心原理与扩展点.md",
+    "ai coding/JAVA知识库/04-设计模式/项目设计模式实战总结.md",
+    "ai coding/JAVA知识库/03-JVM/JVM问题排查思路.md",
+    "ai coding/JAVA知识库/03-JVM/SPI与字节码增强原理及面试题.md",
+    "ai coding/JAVA知识库/02-并发编程/CAS.md",
+    "ai coding/JAVA知识库/02-并发编程/线程池.md",
+    "ai coding/JAVA知识库/02-并发编程/ThreadLocal.md",
     "ai coding/学习内容/Pasted image 20260702205914.png",
-    "ai coding/学习内容/langGraph.md",
-    "ai coding/学习内容/codex 安装.md",
-    "ai coding/微服务知识库/路由服务/全量节点归属速查.md",
-    "ai coding/JAVA知识点/Java责任链模式.md",
-    "ai coding/JAVA知识点/Java装饰器模式.md",
-    "ai coding/JAVA知识点/Java适配器模式.md",
     "ai coding/JAVA知识点",
     "ai coding/微服务知识库/外开/开发流程",
     "ai coding/微服务知识库/外开 1/UU跑腿",
