@@ -1,5 +1,7 @@
 # Elasticsearch 类型、常用命令与核心原理总结
 
+专项场景：[大数据量加字段：MySQL 5.7 与 Elasticsearch](../场景题复习/大数据量加字段-MySQL5.7与Elasticsearch.md)，重点区分新增 mapping、历史回填与新索引迁移，并说明限速、版本冲突和增量一致性。
+
 ## 目录
 
 - [1. 学习主线](#1-学习主线)
