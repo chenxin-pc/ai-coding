@@ -424,16 +424,16 @@ GET order_index/_search
 
 ### 3.9 其他常见类型
 
-| 类型 | 场景 |
-| --- | --- |
-| `ip` | IPv4 / IPv6 |
-| `geo_point` | 经纬度点 |
-| `geo_shape` | 地理形状 |
-| `binary` | Base64 二进制 |
-| `flattened` | 不固定结构的 JSON 对象 |
-| `wildcard` | 面向通配符查询优化的 keyword 家族字段 |
-| `dense_vector` / `sparse_vector` | 向量检索 |
-| `semantic_text` | 新版本语义搜索场景 |
+| 类型                               | 场景                      |
+| -------------------------------- | ----------------------- |
+| `ip`                             | IPv4 / IPv6             |
+| `geo_point`                      | 经纬度点                    |
+| `geo_shape`                      | 地理形状                    |
+| `binary`                         | Base64 二进制              |
+| `flattened`                      | 不固定结构的 JSON 对象          |
+| `wildcard`                       | 面向通配符查询优化的 keyword 家族字段 |
+| `dense_vector` / `sparse_vector` | 向量检索                    |
+| `semantic_text`                  | 新版本语义搜索场景               |
 
 Java 后端日常最常用的还是：
 
